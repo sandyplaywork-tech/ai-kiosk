@@ -1,0 +1,71 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: aikiosk
+      POSTGRES_USER: aikiosk
+      POSTGRES_PASSWORD: aikiosk
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aikiosk"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  mailpit:
+    # Fake SMTP server + web inbox for local dev/testing. A real deployment
+    # points SPRING_MAIL_HOST/PORT (+ username/password) at AWS SES's or
+    # SendGrid's SMTP endpoint instead - no backend code change needed.
+    image: axllent/mailpit:latest
+    ports:
+      - "8025:8025" # web inbox UI
+      - "1025:1025" # SMTP
+
+  backend:
+    build: ./backend
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/aikiosk
+      SPRING_DATASOURCE_USERNAME: aikiosk
+      SPRING_DATASOURCE_PASSWORD: aikiosk
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_MAIL_HOST: mailpit
+      SPRING_MAIL_PORT: 1025
+      # Dev-only placeholder - override with a real secret in any shared/prod deployment.
+      KIOSK_ADMIN_API_KEY: dev-admin-key-change-me
+      # Pulled from the host shell / .env - never hardcode a real key here.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?Set ANTHROPIC_API_KEY in your shell or a .env file before starting the stack}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_BASE_URL: http://localhost:8080
+    depends_on:
+      - backend
+
+volumes:
+  postgres-data:

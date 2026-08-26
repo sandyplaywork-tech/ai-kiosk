@@ -1,0 +1,74 @@
+spring:
+  application:
+    name: ai-kiosk-backend
+  datasource:
+    url: jdbc:postgresql://localhost:5432/aikiosk
+    username: aikiosk
+    password: aikiosk
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  data:
+    redis:
+      host: localhost
+      port: 6379
+  mail:
+    # Local dev default points at Mailpit (fake SMTP + web inbox). A real
+    # deployment swaps these four values for AWS SES's or SendGrid's SMTP
+    # endpoint/credentials - no code change needed either way.
+    host: localhost
+    port: 1025
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
+
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: always
+
+# Session rules, externalized per the build sequence (step 1) instead of hardcoded
+# in auth/session-enforcement code.
+kiosk:
+  session:
+    length-minutes: 30
+    token-cap: 50000
+    retention-hours: 24
+    warning-minutes-remaining: 5
+    warning-token-percent: 80
+    # On logout, the session is paused (not hard-deleted) and stays resumable
+    # for this long - or until its own wall-clock time runs out, whichever
+    # comes first. No time is refunded during the pause.
+    logout-grace-minutes: 5
+  concurrency:
+    target: 10
+  admin:
+    # Shared secret staff/admin tooling sends as the X-Admin-Key header when
+    # issuing vouchers. Override via KIOSK_ADMIN_API_KEY in any real deployment.
+    api-key: dev-admin-key-change-me
+  llm:
+    # Haiku for cost per the project's stack choice; bump to claude-sonnet-5 if
+    # quality needs it. The Anthropic API key itself comes from the
+    # ANTHROPIC_API_KEY env var - the SDK client reads it directly, never
+    # stored in this file.
+    model: claude-haiku-4-5
+    max-tokens: 1024
+  cors:
+    # The customer-facing frontend's origin - the only one allowed to call
+    # the login/chat/session endpoints from a browser. Admin endpoints are
+    # intentionally excluded; staff tooling isn't expected to run from here.
+    allowed-origin: http://localhost:5173
+  email:
+    from-address: kiosk@example.com
