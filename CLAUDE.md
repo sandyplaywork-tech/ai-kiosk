@@ -129,6 +129,19 @@ and the session auto-terminates (logout + data deletion) after the limit.
 8. **Load test and deploy** — simulate 10 concurrent sessions locally to confirm
    Redis + Claude API rate limits hold up, then deploy via Docker Compose
    (intranet) or push to Cloud Run/GKE if cloud-hosted
+   - **8a. Load test (done)** — 10 concurrent full sessions (login → 2 rounds
+     of concurrent chat → logout) against real Claude Haiku 4.5; confirmed
+     10/10 success both rounds and, more importantly, correct per-session
+     isolation under concurrency (independent `tokensRemaining`, no
+     cross-session bleed into another session's `session:messages:{id}`
+     history). Along the way, added logging to the previously-silent
+     `AnthropicServiceException` handler (step 4) and restart policies +
+     a backend healthcheck to `docker-compose.yml` (belt-and-suspenders
+     resilience for whichever deploy target comes next).
+   - **8b. Deploy — deferred by choice.** Not yet pointed at an intranet
+     server or cloud project; running locally via Docker Compose is
+     sufficient for now. Revisit when a real target (host or GCP project)
+     is available — the stack is otherwise deploy-ready.
 
 ## Current status
 - [x] Step 1: Define session rules as config
@@ -145,4 +158,6 @@ and the session auto-terminates (logout + data deletion) after the limit.
   - [x] Step 6e: Postgres chat archive + scheduled hard-delete job
 - [x] Step 7: Build the admin dashboard
   - [x] Step 7a: Issue New Login panel (username/password or voucher code)
-- [ ] Step 8: Load test and deploy
+- [x] Step 8: Load test and deploy
+  - [x] Step 8a: Load test (10 concurrent sessions, verified)
+  - [ ] Step 8b: Deploy (deferred by choice — no target environment yet)
