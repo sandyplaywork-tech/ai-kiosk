@@ -6,6 +6,8 @@ import com.aikiosk.backend.chat.InvalidEmailException;
 import com.aikiosk.backend.session.SessionExpiredException;
 import com.aikiosk.backend.session.TokenLimitReachedException;
 import com.aikiosk.backend.voucher.VoucherNotFoundException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -15,6 +17,8 @@ import java.util.Map;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
 
     @ExceptionHandler(InvalidCredentialsException.class)
     public ResponseEntity<Map<String, String>> handleInvalidCredentials() {
@@ -52,7 +56,8 @@ public class ApiExceptionHandler {
     }
 
     @ExceptionHandler(AnthropicServiceException.class)
-    public ResponseEntity<Map<String, String>> handleAnthropicServiceException() {
+    public ResponseEntity<Map<String, String>> handleAnthropicServiceException(AnthropicServiceException e) {
+        log.error("Anthropic API call failed", e);
         return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Map.of("error", "llm_upstream_error"));
     }
 }
